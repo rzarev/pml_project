@@ -1,0 +1,5 @@
+# Data files
+*.csv
+
+# Vim temp files
+*.swp
