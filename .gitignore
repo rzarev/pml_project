@@ -3,3 +3,9 @@
 
 # Vim temp files
 *.swp
+
+# Rstudio files
+.Rproj.user
+.Rhistory
+.RData
+*.Rproj
