@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<title>Prediction Assignment Writeup</title>
+
+<script type="text/javascript">
+window.onload = function() {
+  var imgs = document.getElementsByTagName('img'), i, img;
+  for (i = 0; i < imgs.length; i++) {
+    img = imgs[i];
+    // center an image if it is the only element of its parent
+    if (img.parentElement.childElementCount === 1)
+      img.parentElement.style.textAlign = 'center';
+  }
+};
+</script>
+
+
+
+
+
+<style type="text/css">
+body, td {
+   font-family: sans-serif;
+   background-color: white;
+   font-size: 13px;
+}
+
+body {
+  max-width: 800px;
+  margin: auto;
+  padding: 1em;
+  line-height: 20px;
+}
+
+tt, code, pre {
+   font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace;
+}
+
+h1 {
+   font-size:2.2em;
+}
+
+h2 {
+   font-size:1.8em;
+}
+
+h3 {
+   font-size:1.4em;
+}
+
+h4 {
+   font-size:1.0em;
+}
+
+h5 {
+   font-size:0.9em;
+}
+
+h6 {
+   font-size:0.8em;
+}
+
+a:visited {
+   color: rgb(50%, 0%, 50%);
+}
+
+pre, img {
+  max-width: 100%;
+}
+pre {
+  overflow-x: auto;
+}
+pre code {
+   display: block; padding: 0.5em;
+}
+
+code {
+  font-size: 92%;
+  border: 1px solid #ccc;
+}
+
+code[class] {
+  background-color: #F8F8F8;
+}
+
+table, td, th {
+  border: none;
+}
+
+blockquote {
+   color:#666666;
+   margin:0;
+   padding-left: 1em;
+   border-left: 0.5em #EEE solid;
+}
+
+hr {
+   height: 0px;
+   border-bottom: none;
+   border-top-width: thin;
+   border-top-style: dotted;
+   border-top-color: #999999;
+}
+
+@media print {
+   * {
+      background: transparent !important;
+      color: black !important;
+      filter:none !important;
+      -ms-filter: none !important;
+   }
+
+   body {
+      font-size:12pt;
+      max-width:100%;
+   }
+
+   a, a:visited {
+      text-decoration: underline;
+   }
+
+   hr {
+      visibility: hidden;
+      page-break-before: always;
+   }
+
+   pre, blockquote {
+      padding-right: 1em;
+      page-break-inside: avoid;
+   }
+
+   tr, img {
+      page-break-inside: avoid;
+   }
+
+   img {
+      max-width: 100% !important;
+   }
+
+   @page :left {
+      margin: 15mm 20mm 15mm 10mm;
+   }
+
+   @page :right {
+      margin: 15mm 10mm 15mm 20mm;
+   }
+
+   p, h2, h3 {
+      orphans: 3; widows: 3;
+   }
+
+   h2, h3 {
+      page-break-after: avoid;
+   }
+}
+</style>
+
+
+
+</head>
+
+<body>
+<h1>Prediction Assignment Writeup</h1>
+
+<h2>Acknowledgements</h2>
+
+<blockquote>
+<p>The data set used here is from the <em>Weight Lifting Exercise Dataset</em>.
+The original research that produced this data set is published at:</p>
+
+<p>Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. <em>Qualitative Activity Recognition of
+Weight Lifting Exercises</em>. <strong>Proceedings of 4th International Conference in Cooperation with SIGCHI
+(Augmented Human &#39;13)</strong>. Stuttgart, Germany: ACM SIGCHI, 2013.</p>
+
+<p>Read more: <a href="http://groupware.les.inf.puc-rio.br/har#wle_paper_section#ixzz3H78SvjmM"><em>Groupware@LES</em> website</a>.</p>
+</blockquote>
+
+<h2>Background</h2>
+
+<p>This data set was created by measuring several individuals performing a
+weight lifiting exercise, in one of several ways: correctly, and while making
+one of several common mistakes.</p>
+
+<p>Various physical measurements of their movement were made recording position,
+momentum, orientation, of several bodyparts. The goal was to be able to detect
+whether the exercise is performed correctly, or detect a specific mistake,
+based on these phyisical measurements.</p>
+
+<p>To simplify the analysis, the raw digital signals were summarised by some
+summary statistics over various time-slices.</p>
+
+<h2>Analysis</h2>
+
+<p>For this course assignment we are provided with some subset of this data,
+with labeled outcomes (the file <code>pml-training.csv</code>), as well as 20 cases
+(the file <code>pml-testing.csv</code>), whose outcomes are unlabeled
+and we have to guess.</p>
+
+<p>We describe below each step of the analysis performed:</p>
+
+<h3>Loading and cleaning the data</h3>
+
+<p>We find that the data contains mostly numerical features. However, many of
+them contain nonstandardly coded missing values. In addition to the standard
+<code>NA</code>, there are also empty strings <code>&quot;&quot;</code>, and error expressions <code>&quot;#DIV/0!&quot;</code>.</p>
+
+<p>In addition, there is one column <code>cvtd_timestamp</code> that contains a time-stamp
+as a string value, in a European format <code>DD/MM/YYYY HH:MM</code>.</p>
+
+<p>Finally, there are several categorical variables:</p>
+
+<ul>
+<li>The outcome variable <code>classe</code> with values <code>A</code>, <code>B</code>, <code>C</code>, <code>D</code>, and <code>E</code>.</li>
+<li>The variable <code>user_name</code>  which specifies which subject was performing the
+exercise.</li>
+<li>The variable <code>new_window</code> describing whether a particular time slice is part
+of a new moving window.</li>
+</ul>
+
+<p>A final peculiarity is that several numerical variables contain only missing
+values. When read by <code>read.csv()</code>, these are assigned the logical type, which
+we need to manually convert.</p>
+
+<h3>Training and validation sets</h3>
+
+<p>To properly assess model performance, we separate our data set (the
+contents of <code>pml-training.csv</code>) into a training set containing 60% of the
+data, and a validation set containing 40% of the data. The validation set is
+held out until the very end, and all model selection uses the testing set only.</p>
+
+<h3>Exploratory analysis</h3>
+
+<p>Next, we perform exploratory analysis <em>on the training set only</em>.</p>
+
+<p>The first step is to check for missing values. In addition to the variables
+discovered during cleaning to contain only missing values, we find many variables
+to contain almost exclusively missing values (upwards of 95% of all values).</p>
+
+<p>This suggests that in any model we only include any variables that contain no
+missing values. This leaves us with a little over a third of the variables left:
+58 out of 158 feature variables.</p>
+
+<h3>Model selection</h3>
+
+<p>We tested three models, selected due to low training time. Since we end up with
+acceptable performance, we do not test more complicated models.</p>
+
+<p>For each of the three models, the fitting strategy is as follows:</p>
+
+<ol>
+<li>Pre-process the data: strip all feature variables with any missing values.</li>
+<li>Fit the model with default parameters (we perform no tuning).</li>
+</ol>
+
+<p>To assess model performance, in each case we use repeated cross-validation:</p>
+
+<ol>
+<li>In each repetition we perfrom 10-fold cross-validation. This gives a good
+estimate for the out-of-sample accuracy.</li>
+<li>Since each repetition only predicts on each test case once, we repeat the
+whole process 5 time to detect any variability (instability of the fitting
+method).</li>
+<li>Due to the very simple pre-processing we use, this is only a minor concern,
+but can be more important generally. We do all the preprocessing only <em>after</em>
+splitting into folds.</li>
+</ol>
+
+<p>The models we try are:</p>
+
+<ol>
+<li><strong>Random Forest.</strong> We use the <code>randomForest()</code> function from the <code>randomForest</code>
+package with all default arguments.</li>
+<li><strong>Support Vector Machine (SVM) using C-classification.</strong> We use the <code>svm()</code>
+function from the <code>e1071</code> package with all default arguments.</li>
+<li><strong>SVM using nu-classification.</strong> We use the <code>svm()</code> function from the <code>e1071</code>
+package with default arguments, except for <code>type = &quot;nu-classification&quot;</code>.</li>
+</ol>
+
+<p>We find that all three models perform in a very stable manner, reflected by
+low variability of the resulting accuracy for each repetition. However, the
+average perfomance is very different.</p>
+
+<p>We find that the Random Forest classifier has extremely high accuracy, while
+both SVM variations perform poorly (with nu-classification doing the worst).</p>
+
+<h3>Final model</h3>
+
+<p>Due to the above method we pick Random Forest as the final model. Since we used
+the entire training set in the cross-validations from the previous step, the
+accuracy estimates are only accurate as comparissons. To get a new, unbiased
+estimate for the final model, we need to use a fresh data set. This is the
+validation set, which has not been touched so far.</p>
+
+<p>We fit the final model on the entire training set and asses accuracy on the
+validation set.</p>
+
+<h3>Applying the final model</h3>
+
+<p>Finally, we apply the model to the 20 unlabeled assingment cases. For this
+we train the model on all labeled cases (both the training and validation set).
+Note that generally overfitting decreases with increased sample size, and we
+are now increasing the sample size by 67% (from 60% to 100% of the available cases).
+Thus the estimate of out-of-sample error from the previous section is probably
+too pessimistic.</p>
+
+<h3>All the details</h3>
+
+<p>The original code used all the analysis (including dead ends) is available
+in the repository in the following files (correpsponding roughly to sections
+of this write-up):</p>
+
+<ul>
+<li><code>0_get_data.R</code>: Downloading the data, if necessary. </li>
+<li><code>1_load_and_clean.R</code>: Load the data with appropriate variable types,
+and separte into testing and validation sets.</li>
+<li><code>2_explore.R</code>: Exploratory analysis.</li>
+<li><code>3_1_randomForest.R</code>, <code>3_2_svm_C_classification.R</code>, and <code>3_3_svm_nu_classification.R</code>: Repeated CV
+for each model.</li>
+<li><code>4_final_model_evaluation.R</code>: Evaluation of Random Forest on the validation set.</li>
+<li><code>5_final_model_application.R</code>: Predict the 20 assignment cases.</li>
+</ul>
+
+<h3>Further thoughts</h3>
+
+<p>During the exploratory analysis we found that the numerical features are
+overwhelmingly predicted by the variable <code>user_name</code>. In other words
+between-subject variability is much higher than intra-subject variability.</p>
+
+<p>For this project both the training and testing cases are labeled by subject
+(and contain the same subjects).
+However, in a real-world scenario, a much more plausible scenario is to train
+the algorithm on several subjects, but then apply it to new, unseen
+subjects. In that case the appropriate strategy for model building would be
+to separate the majority of the subjects to the training set, and leave a few
+for the validation set. In addition, the model should not depend on a subject
+label (or other variables strongly correlated to it, like the timestamps
+in this case).</p>
+
+</body>
+
+</html>
